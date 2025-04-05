@@ -2,7 +2,8 @@ html {
 	font-family: sans-serif;
 	font-size: 1rem;
 
-	background-color: oklch(1 0 0);
+	background-color: oklch(0.24 0 0);
+	color: oklch(1 0 0);
 }
 
 body {
