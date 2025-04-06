@@ -1,48 +1,54 @@
 <script setup>
 import { ref } from "vue";
 
-import GuessRow from "./GuessRow.vue";
+import GuessGrid from "./GuessGrid.vue";
 
-const secret = "GUESS";
+const isFinished = ref(false);
+const isWin = ref(false);
+const statusLine = ref("");
+const attempsLine = ref("");
+const retryLine = ref("");
 
-const letters = ref(
-	Array.from({ length: secret.length }, () => ({
-		key: "",
-		isInWord: false,
-		isPosHit: false,
-	}))
-);
+/**
+ * @param {number} attempts
+ */
+const handlePass = (attempts) => {
+	const noun = attempts === 1 ? "attempt" : "attempts";
 
-const guess = ref("");
-const isSubmitted = ref(false);
+	isWin.value = true;
+	statusLine.value = "You have won";
+	attempsLine.value = `It took you ${attempts} ${noun}`;
+	retryLine.value = "Play again?";
+};
 
-const submit = () => {
-	if (guess.value.length !== secret.length) return;
+const handleFail = () => {
+	statusLine.value = "You have lost";
+	retryLine.value = "Give it another try?";
+};
 
-	letters.value = letters.value.map((value, i) => {
-		const key = guess.value.at(i).toUpperCase();
-
-		if (key === undefined) return value;
-
-		const isInWord = secret.includes(key);
-		const isPosHit = secret.at(i) === key;
-
-		return { key, isInWord, isPosHit };
-	});
-
-	isSubmitted.value = true;
+const retry = () => {
+	isFinished.value = false;
+	isWin.value = false;
 };
 </script>
 
 <template>
 	<h1>Word Guessing Time</h1>
 
-	<article>
-		<GuessRow :letters="letters" :is-submitted="isSubmitted" />
-	</article>
+	<GuessGrid
+		v-if="!isFinished"
+		v-model="isFinished"
+		secret="GUESS"
+		:attempts="5"
+		@pass="handlePass"
+		@fail="handleFail"
+	/>
 
-	<input v-model="guess" type="text" :maxlength="secret.length" />
-	<button @click="submit">Submit</button>
+	<template v-else>
+		<h2>{{ statusLine }}</h2>
+		<p v-if="isWin">{{ attempsLine }}</p>
+		<button @click="retry">{{ retryLine }}</button>
+	</template>
 </template>
 
 <style>
