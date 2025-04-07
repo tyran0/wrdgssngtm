@@ -2,6 +2,7 @@
 import { ref } from "vue";
 
 import GuessRow from "./GuessRow.vue";
+import Keyboard from "./Keyboard.vue";
 
 /**
  * @typedef Props
@@ -34,13 +35,7 @@ const rows = ref(
 	}))
 );
 
-/**
-@param {Event} e
- */
-const handleChange = (e) => {
-	/** @type {HTMLInputElement} */
-	const input = e.currentTarget;
-	const value = input.value.toUpperCase();
+const handleSubmit = (value) => {
 	const cells = rows.value[pos.value].cells;
 
 	let hits = 0;
@@ -73,17 +68,7 @@ const handleChange = (e) => {
 		return { key, isInWord, isPosHit };
 	});
 
-	input.value = "";
-
 	rows.value[pos.value].isSubmitted = true;
-
-	if (pos.value === props.attempts - 1) {
-		model.value = true;
-
-		emit("fail");
-
-		return;
-	}
 
 	pos.value++;
 
@@ -91,7 +76,27 @@ const handleChange = (e) => {
 		model.value = true;
 
 		emit("pass", pos.value);
+
+		return;
 	}
+
+	if (pos.value === props.attempts) {
+		model.value = true;
+
+		emit("fail");
+	}
+};
+
+const handleRemove = (i) => {
+	const cells = rows.value[pos.value].cells;
+
+	cells[i].key = "";
+};
+
+const handleInsert = (i, key) => {
+	const cells = rows.value[pos.value].cells;
+
+	cells[i].key = key;
 };
 </script>
 
@@ -105,12 +110,10 @@ const handleChange = (e) => {
 		/>
 	</article>
 
-	<p>Note: Put your guess as a whole word in this field and press enter</p>
-	<div>
-		<input
-			type="text"
-			:maxlength="props.secret.length"
-			@change="handleChange"
-		/>
-	</div>
+	<Keyboard
+		:maxlength="props.secret.length"
+		@submit="handleSubmit"
+		@insert="handleInsert"
+		@remove="handleRemove"
+	/>
 </template>
