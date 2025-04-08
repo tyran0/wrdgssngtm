@@ -1,7 +1,8 @@
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 
 import useKeyboard from "./useKeyboard";
+import useOrientation from "./useOrientation";
 
 import GuessRow from "./GuessRow.vue";
 import Keyboard from "./Keyboard.vue";
@@ -25,6 +26,7 @@ const props = defineProps({
 const emit = defineEmits(["pass", "fail"]);
 
 const kb = useKeyboard(props.secret.length);
+const { isPortrait } = useOrientation();
 
 const pos = ref(0);
 
@@ -109,6 +111,41 @@ const handleEnter = () => {
 		emit("fail");
 	}
 };
+
+/**
+ * A function to handle user input on desktop
+ * @param {KeyboardEvent} e
+ */
+const handleKeyDown = (e) => {
+	console.log(e.key);
+
+	if (e.key === "Enter") {
+		handleEnter();
+
+		return;
+	}
+
+	if (e.key === "Backspace") {
+		handleDelete();
+
+		return;
+	}
+
+	// TODO: figure out how to get only letters
+	handleInput(e.key.toUpperCase());
+};
+
+onMounted(() => {
+	if (isPortrait.value) return;
+
+	document.addEventListener("keydown", handleKeyDown);
+});
+
+onUnmounted(() => {
+	if (isPortrait.value) return;
+
+	document.removeEventListener("keydown", handleKeyDown);
+});
 </script>
 
 <template>
@@ -121,11 +158,13 @@ const handleEnter = () => {
 		/>
 	</article>
 
-	<Keyboard
-		:isEnterDisabled="!kb.isEndOfLine.value"
-		:isDeleteDisabled="kb.isBufEmpty.value"
-		@input="handleInput"
-		@delete="handleDelete"
-		@enter="handleEnter"
-	/>
+	<template v-if="isPortrait">
+		<Keyboard
+			:isEnterDisabled="!kb.isEndOfLine.value"
+			:isDeleteDisabled="kb.isBufEmpty.value"
+			@input="handleInput"
+			@delete="handleDelete"
+			@enter="handleEnter"
+		/>
+	</template>
 </template>
