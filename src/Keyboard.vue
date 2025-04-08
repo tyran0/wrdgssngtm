@@ -2,125 +2,110 @@
 import { ref, computed } from "vue";
 
 /**
- * @typedef Props
- * @prop {number | undefined} maxlength
- * @prop {(value: string) => void} onSubmit
- * @prop {(pos: number, key: string) => void} onInsert
- * @prop {(pos: number) => void} onRemove
+ * @typedef Cell
+ * @prop {string} key
+ * @prop {"input" | "delete" | "enter"} action
  */
 
 /**
- * @typedef Cell
- * @prop {string} key
- * @prop {"submit" | "insert" | "remove"} action
+ * @typedef Props
+ * @prop {boolean} isEnterDisabled
+ * @prop {boolean} isDeleteDisabled
+ * @prop {(key: string) => void} onInput
+ * @prop {() => void} onDelete
+ * @prop {() => void} onEnter
  */
 
 /** @type {Props} */
-const props = defineProps({ maxlength: Number });
-const emit = defineEmits(["submit", "insert", "remove"]);
+const props = defineProps({
+	isEnterDisabled: { type: Boolean, required: true },
+	isDeleteDisabled: { type: Boolean, required: true },
+});
+
+const emit = defineEmits(["input", "delete", "enter"]);
 
 /** @type {import("vue").Ref<Cell[][]>> */
 const rows = ref([
 	[
-		{ key: "Q", action: "insert" },
-		{ key: "W", action: "insert" },
-		{ key: "E", action: "insert" },
-		{ key: "R", action: "insert" },
-		{ key: "T", action: "insert" },
-		{ key: "Y", action: "insert" },
-		{ key: "U", action: "insert" },
-		{ key: "I", action: "insert" },
-		{ key: "O", action: "insert" },
-		{ key: "P", action: "insert" },
+		{ key: "Q", action: "input" },
+		{ key: "W", action: "input" },
+		{ key: "E", action: "input" },
+		{ key: "R", action: "input" },
+		{ key: "T", action: "input" },
+		{ key: "Y", action: "input" },
+		{ key: "U", action: "input" },
+		{ key: "I", action: "input" },
+		{ key: "O", action: "input" },
+		{ key: "P", action: "input" },
 	],
 	[
-		{ key: "A", action: "insert" },
-		{ key: "S", action: "insert" },
-		{ key: "D", action: "insert" },
-		{ key: "F", action: "insert" },
-		{ key: "G", action: "insert" },
-		{ key: "H", action: "insert" },
-		{ key: "J", action: "insert" },
-		{ key: "K", action: "insert" },
-		{ key: "L", action: "insert" },
+		{ key: "A", action: "input" },
+		{ key: "S", action: "input" },
+		{ key: "D", action: "input" },
+		{ key: "F", action: "input" },
+		{ key: "G", action: "input" },
+		{ key: "H", action: "input" },
+		{ key: "J", action: "input" },
+		{ key: "K", action: "input" },
+		{ key: "L", action: "input" },
 	],
 	[
-		{ key: "Enter", action: "submit" },
-		{ key: "Z", action: "insert" },
-		{ key: "X", action: "insert" },
-		{ key: "C", action: "insert" },
-		{ key: "V", action: "insert" },
-		{ key: "B", action: "insert" },
-		{ key: "N", action: "insert" },
-		{ key: "M", action: "insert" },
-		{ key: "Delete", action: "remove" },
+		{ key: "Enter", action: "enter" },
+		{ key: "Z", action: "input" },
+		{ key: "X", action: "input" },
+		{ key: "C", action: "input" },
+		{ key: "V", action: "input" },
+		{ key: "B", action: "input" },
+		{ key: "N", action: "input" },
+		{ key: "M", action: "input" },
+		{ key: "Delete", action: "delete" },
 	],
 ]);
 
-const buf = ref("");
-const pos = ref(0);
+const enterKeyCls = computed(() => {
+	const cls = ["cell", "accent"];
 
-const isBufEmpty = computed(() => pos.value === 0);
+	if (props.isEnterDisabled) cls.push("is-disabled");
 
-const isEndOfLine = computed(() => {
-	if (props.maxlength === undefined) return false;
-
-	return pos.value === props.maxlength;
+	return cls.join(" ");
 });
 
-const isSubmitDisabled = computed(() => {
-	if (isBufEmpty.value) return true;
-	if (props.maxlength === undefined) return false;
+const deleteKeyCls = computed(() => {
+	const cls = ["cell"];
 
-	return !isEndOfLine.value;
+	if (props.isDeleteDisabled) cls.push("is-disabled");
+
+	return cls.join(" ");
 });
 
 /**
  * @param {Cell} cell
  */
-const getCellClass = (cell) => {
-	switch (cell.action) {
-		case "submit":
-			return `cell accent ${isSubmitDisabled.value ? "is-disabled" : ""}`;
-		case "remove":
-			return `cell ${isBufEmpty.value ? "is-disabled" : ""}`;
-		default:
-			return "cell";
-	}
+const getClassName = (cell) => {
+	if (cell.action === "input") return "cell";
+	if (cell.action === "delete") return deleteKeyCls.value;
+	if (cell.action === "enter") return enterKeyCls.value;
 };
 
 /**
  * @param {Cell} cell
  */
-const handleCellClick = (cell) => {
-	if (cell.action === "remove" && isBufEmpty.value) return;
-
-	if (cell.action === "remove") {
-		pos.value--;
-		buf.value = buf.value.substring(0, pos.value);
-
-		emit("remove", pos.value);
+const handleClick = (cell) => {
+	if (cell.action === "input") {
+		emit("input", cell.key);
 
 		return;
 	}
 
-	if (cell.action === "insert" && isEndOfLine.value) return;
-
-	if (cell.action === "insert") {
-		emit("insert", pos.value, cell.key);
-
-		buf.value += cell.key;
-		pos.value++;
+	if (cell.action === "delete") {
+		emit("delete");
 
 		return;
 	}
 
-	if (isSubmitDisabled.value) return;
+	if (props.isEnterDisabled) return;
 
-	emit("submit", buf.value);
-
-	buf.value = "";
-	pos.value = 0;
+	emit("enter");
 };
 </script>
 
@@ -130,8 +115,8 @@ const handleCellClick = (cell) => {
 			<div
 				v-for="cell in row"
 				:key="cell.key"
-				:class="getCellClass(cell)"
-				@click="handleCellClick(cell)"
+				:class="getClassName(cell)"
+				@click="handleClick(cell)"
 			>
 				{{ cell.key }}
 			</div>

@@ -1,6 +1,8 @@
 <script setup>
 import { ref } from "vue";
 
+import useKeyboard from "./useKeyboard";
+
 import GuessRow from "./GuessRow.vue";
 import Keyboard from "./Keyboard.vue";
 
@@ -22,6 +24,8 @@ const props = defineProps({
 
 const emit = defineEmits(["pass", "fail"]);
 
+const kb = useKeyboard(props.secret.length);
+
 const pos = ref(0);
 
 const rows = ref(
@@ -35,8 +39,27 @@ const rows = ref(
 	}))
 );
 
-const handleSubmit = (value) => {
+const handleInput = (key) => {
 	const cells = rows.value[pos.value].cells;
+	const i = kb.put(key);
+
+	if (i === undefined) return;
+
+	cells[i].key = key;
+};
+
+const handleDelete = () => {
+	const cells = rows.value[pos.value].cells;
+	const i = kb.remove();
+
+	if (i === undefined) return;
+
+	cells[i].key = "";
+};
+
+const handleEnter = () => {
+	const cells = rows.value[pos.value].cells;
+	const value = kb.flush();
 
 	let hits = 0;
 
@@ -86,18 +109,6 @@ const handleSubmit = (value) => {
 		emit("fail");
 	}
 };
-
-const handleRemove = (i) => {
-	const cells = rows.value[pos.value].cells;
-
-	cells[i].key = "";
-};
-
-const handleInsert = (i, key) => {
-	const cells = rows.value[pos.value].cells;
-
-	cells[i].key = key;
-};
 </script>
 
 <template>
@@ -111,9 +122,10 @@ const handleInsert = (i, key) => {
 	</article>
 
 	<Keyboard
-		:maxlength="props.secret.length"
-		@submit="handleSubmit"
-		@insert="handleInsert"
-		@remove="handleRemove"
+		:isEnterDisabled="!kb.isEndOfLine.value"
+		:isDeleteDisabled="kb.isBufEmpty.value"
+		@input="handleInput"
+		@delete="handleDelete"
+		@enter="handleEnter"
 	/>
 </template>
