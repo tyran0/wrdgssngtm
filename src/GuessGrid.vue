@@ -1,7 +1,11 @@
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
+
+import useKeyboard from "./useKeyboard";
+import useOrientation from "./useOrientation";
 
 import GuessRow from "./GuessRow.vue";
+import Keyboard from "./Keyboard.vue";
 
 /**
  * @typedef Props
@@ -21,6 +25,9 @@ const props = defineProps({
 
 const emit = defineEmits(["pass", "fail"]);
 
+const kb = useKeyboard(props.secret.length);
+const { isPortrait } = useOrientation();
+
 const pos = ref(0);
 
 const rows = ref(
@@ -34,14 +41,27 @@ const rows = ref(
 	}))
 );
 
-/**
-@param {Event} e
- */
-const handleChange = (e) => {
-	/** @type {HTMLInputElement} */
-	const input = e.currentTarget;
-	const value = input.value.toUpperCase();
+const handleInput = (key) => {
 	const cells = rows.value[pos.value].cells;
+	const i = kb.put(key);
+
+	if (i === undefined) return;
+
+	cells[i].key = key;
+};
+
+const handleDelete = () => {
+	const cells = rows.value[pos.value].cells;
+	const i = kb.remove();
+
+	if (i === undefined) return;
+
+	cells[i].key = "";
+};
+
+const handleEnter = () => {
+	const cells = rows.value[pos.value].cells;
+	const value = kb.flush();
 
 	let hits = 0;
 
@@ -73,17 +93,7 @@ const handleChange = (e) => {
 		return { key, isInWord, isPosHit };
 	});
 
-	input.value = "";
-
 	rows.value[pos.value].isSubmitted = true;
-
-	if (pos.value === props.attempts - 1) {
-		model.value = true;
-
-		emit("fail");
-
-		return;
-	}
 
 	pos.value++;
 
@@ -91,8 +101,51 @@ const handleChange = (e) => {
 		model.value = true;
 
 		emit("pass", pos.value);
+
+		return;
+	}
+
+	if (pos.value === props.attempts) {
+		model.value = true;
+
+		emit("fail");
 	}
 };
+
+/**
+ * A function to handle user input on desktop
+ * @param {KeyboardEvent} e
+ */
+const handleKeyDown = (e) => {
+	console.log(e.key);
+
+	if (e.key === "Enter") {
+		handleEnter();
+
+		return;
+	}
+
+	if (e.key === "Backspace") {
+		handleDelete();
+
+		return;
+	}
+
+	// TODO: figure out how to get only letters
+	handleInput(e.key.toUpperCase());
+};
+
+onMounted(() => {
+	if (isPortrait.value) return;
+
+	document.addEventListener("keydown", handleKeyDown);
+});
+
+onUnmounted(() => {
+	if (isPortrait.value) return;
+
+	document.removeEventListener("keydown", handleKeyDown);
+});
 </script>
 
 <template>
@@ -105,12 +158,13 @@ const handleChange = (e) => {
 		/>
 	</article>
 
-	<p>Note: Put your guess as a whole word in this field and press enter</p>
-	<div>
-		<input
-			type="text"
-			:maxlength="props.secret.length"
-			@change="handleChange"
+	<template v-if="isPortrait">
+		<Keyboard
+			:isEnterDisabled="!kb.isEndOfLine.value"
+			:isDeleteDisabled="kb.isBufEmpty.value"
+			@input="handleInput"
+			@delete="handleDelete"
+			@enter="handleEnter"
 		/>
-	</div>
+	</template>
 </template>
