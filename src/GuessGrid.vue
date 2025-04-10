@@ -1,8 +1,8 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, watchEffect, onUnmounted } from "vue";
 
 import useKeyboard from "./useKeyboard";
-import useOrientation from "./useOrientation";
+import useDeviceType from "./useDeviceType";
 
 import GuessRow from "./GuessRow.vue";
 import Keyboard from "./Keyboard.vue";
@@ -26,7 +26,7 @@ const props = defineProps({
 const emit = defineEmits(["pass", "fail"]);
 
 const kb = useKeyboard(props.secret.length);
-const { isPortrait } = useOrientation();
+const { isMobile } = useDeviceType();
 
 const pos = ref(0);
 
@@ -135,14 +135,18 @@ const handleKeyDown = (e) => {
 	handleInput(e.key.toUpperCase());
 };
 
-onMounted(() => {
-	if (isPortrait.value) return;
+watchEffect(() => {
+	if (isMobile.value) {
+		document.removeEventListener("keydown", handleKeyDown);
+
+		return;
+	}
 
 	document.addEventListener("keydown", handleKeyDown);
 });
 
 onUnmounted(() => {
-	if (isPortrait.value) return;
+	if (isMobile.value) return;
 
 	document.removeEventListener("keydown", handleKeyDown);
 });
@@ -158,7 +162,7 @@ onUnmounted(() => {
 		/>
 	</article>
 
-	<template v-if="isPortrait">
+	<template v-if="isMobile">
 		<Keyboard
 			:isEnterDisabled="!kb.isEndOfLine.value"
 			:isDeleteDisabled="kb.isBufEmpty.value"
