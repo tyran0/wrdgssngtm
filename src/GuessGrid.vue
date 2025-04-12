@@ -1,7 +1,6 @@
 <script setup>
-import { ref, watchEffect, onUnmounted } from "vue";
+import { ref, shallowRef, watchEffect, onUnmounted } from "vue";
 
-import useKeyboard from "./useKeyboard";
 import useDeviceType from "./useDeviceType";
 
 import GuessRow from "./GuessRow.vue";
@@ -25,10 +24,9 @@ const props = defineProps({
 
 const emit = defineEmits(["pass", "fail"]);
 
-const kb = useKeyboard(props.secret.length);
 const { isMobile } = useDeviceType();
 
-const pos = ref(0);
+const pos = shallowRef({ row: 0, cell: 0 });
 
 const rows = ref(
 	Array.from({ length: props.attempts }, () => ({
@@ -42,70 +40,65 @@ const rows = ref(
 );
 
 const handleInput = (key) => {
-	const cells = rows.value[pos.value].cells;
-	const i = kb.put(key);
+	const cells = rows.value[pos.value.row].cells;
 
-	if (i === undefined) return;
+	if (pos.value.cell === props.secret.length) return;
 
-	cells[i].key = key;
+	cells[pos.value.cell].key = key;
+	pos.value = { ...pos.value, cell: pos.value.cell + 1 };
 };
 
 const handleDelete = () => {
-	const cells = rows.value[pos.value].cells;
-	const i = kb.remove();
+	const cells = rows.value[pos.value.row].cells;
 
-	if (i === undefined) return;
+	if (pos.value.cell === 0) return;
 
-	cells[i].key = "";
+	pos.value = { ...pos.value, cell: pos.value.cell - 1 };
+	cells[pos.value.cell].key = "";
 };
 
 const handleEnter = () => {
-	const cells = rows.value[pos.value].cells;
-	const value = kb.flush();
+	const cells = rows.value[pos.value.row].cells;
+
+	const left = props.secret.split("").map((key, i) => {
+		if (cells[i].key === key) return "";
+
+		return key;
+	});
 
 	let hits = 0;
 
 	if (model.value) return;
-	if (value.length < props.secret.length) return;
+	if (pos.value.cell !== props.secret.length) return;
 
-	const left = props.secret.split("").map((key, i) => {
-		if (value.at(i) !== key) return key;
-
-		return null;
-	});
-
-	rows.value[pos.value].cells = cells.map((cell, i) => {
-		const key = value.at(i);
+	rows.value[pos.value.row].cells = cells.map((cell, i) => {
+		const key = cell.key;
 
 		let isInWord = false;
 		let isPosHit = false;
 
-		if (key === undefined) return cell;
-		if (props.secret.includes(key)) isInWord = true;
-
-		if (props.secret.at(i) === key) {
+		if (key === props.secret.at(i)) {
+			isInWord = true;
 			isPosHit = true;
 			hits++;
-		} else if (!left.includes(key)) {
-			isInWord = false;
+
+			return { key, isInWord, isPosHit };
 		}
+
+		if (props.secret.includes(key)) isInWord = true;
+		if (isInWord && !left.includes(key)) isInWord = false;
 
 		return { key, isInWord, isPosHit };
 	});
 
-	rows.value[pos.value].isSubmitted = true;
-
-	pos.value++;
+	rows.value[pos.value.row].isSubmitted = true;
+	pos.value = { row: pos.value.row + 1, cell: 0 };
 
 	if (hits === props.secret.length) {
 		model.value = true;
 
-		emit("pass", pos.value);
-
-		return;
-	}
-
-	if (pos.value === props.attempts) {
+		emit("pass", pos.value.row);
+	} else if (pos.value.row === props.attempts) {
 		model.value = true;
 
 		emit("fail");
@@ -117,8 +110,6 @@ const handleEnter = () => {
  * @param {KeyboardEvent} e
  */
 const handleKeyDown = (e) => {
-	console.log(e.key);
-
 	if (e.key === "Enter") {
 		handleEnter();
 
@@ -164,8 +155,8 @@ onUnmounted(() => {
 
 	<template v-if="isMobile">
 		<Keyboard
-			:isEnterDisabled="!kb.isEndOfLine.value"
-			:isDeleteDisabled="kb.isBufEmpty.value"
+			:is-enter-disabled="pos.cell !== props.secret.length"
+			:is-delete-disabled="pos.cell === 0"
 			@input="handleInput"
 			@delete="handleDelete"
 			@enter="handleEnter"
