@@ -1,124 +1,99 @@
 <script setup>
-import { ref, computed } from "vue";
-
-/**
- * @typedef Cell
- * @prop {string} key
- * @prop {"input" | "delete" | "enter"} action
- */
+import { ref } from "vue";
 
 /**
  * @typedef Props
  * @prop {boolean} isEnterDisabled
  * @prop {boolean} isDeleteDisabled
  * @prop {(key: string) => void} onInput
- * @prop {() => void} onDelete
  * @prop {() => void} onEnter
+ * @prop {() => void} onDelete
+ */
+
+/**
+ * @typedef Key
+ * @prop {"input" | "enter" | "delete"} action
+ * @prop {string} value
+ * @prop {boolean} isDisabled
  */
 
 /** @type {Props} */
 const props = defineProps({
-	isEnterDisabled: { type: Boolean, required: true },
-	isDeleteDisabled: { type: Boolean, required: true },
+	isEnterDisabled: { type: Boolean, default: false },
+	isDeleteDisabled: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["input", "delete", "enter"]);
+const emit = defineEmits(["input", "enter", "delete"]);
 
-/** @type {import("vue").Ref<Cell[][]>> */
-const rows = ref([
-	[
-		{ key: "Q", action: "input" },
-		{ key: "W", action: "input" },
-		{ key: "E", action: "input" },
-		{ key: "R", action: "input" },
-		{ key: "T", action: "input" },
-		{ key: "Y", action: "input" },
-		{ key: "U", action: "input" },
-		{ key: "I", action: "input" },
-		{ key: "O", action: "input" },
-		{ key: "P", action: "input" },
-	],
-	[
-		{ key: "A", action: "input" },
-		{ key: "S", action: "input" },
-		{ key: "D", action: "input" },
-		{ key: "F", action: "input" },
-		{ key: "G", action: "input" },
-		{ key: "H", action: "input" },
-		{ key: "J", action: "input" },
-		{ key: "K", action: "input" },
-		{ key: "L", action: "input" },
-	],
-	[
-		{ key: "Enter", action: "enter" },
-		{ key: "Z", action: "input" },
-		{ key: "X", action: "input" },
-		{ key: "C", action: "input" },
-		{ key: "V", action: "input" },
-		{ key: "B", action: "input" },
-		{ key: "N", action: "input" },
-		{ key: "M", action: "input" },
-		{ key: "Delete", action: "delete" },
-	],
+const layout = ref([
+	"Q W E R T Y U I O P",
+	"A S D F G H J K L",
+	"{enter} Z X C V B N M {delete}",
 ]);
 
-const enterKeyCls = computed(() => {
-	const cls = ["cell", "accent"];
-
-	if (props.isEnterDisabled) cls.push("is-disabled");
-
-	return cls.join(" ");
-});
-
-const deleteKeyCls = computed(() => {
-	const cls = ["cell"];
-
-	if (props.isDeleteDisabled) cls.push("is-disabled");
-
-	return cls.join(" ");
-});
-
 /**
- * @param {Cell} cell
+ * @param {string} value
  */
-const getClassName = (cell) => {
-	if (cell.action === "input") return "cell";
-	if (cell.action === "delete") return deleteKeyCls.value;
-	if (cell.action === "enter") return enterKeyCls.value;
+const parseKey = (value) => {
+	/** @type {Key} */
+	const retval = { action: "input", value, isDisabled: false };
+
+	let template;
+	let isTemplate = false;
+
+	if (value.startsWith("{") && value.endsWith("}")) isTemplate = true;
+	if (!isTemplate) return retval;
+
+	template = value.substring(1, value.length - 1);
+
+	retval.action = template;
+
+	if (template === "enter") {
+		retval.value = "Enter";
+		retval.isDisabled = props.isEnterDisabled;
+	}
+
+	if (template === "delete") {
+		retval.value === "Delete";
+		retval.isDisabled = props.isDeleteDisabled;
+	}
+
+	return retval;
 };
 
 /**
- * @param {Cell} cell
+ * @param {Key} key
  */
-const handleClick = (cell) => {
-	if (cell.action === "input") {
-		emit("input", cell.key);
+const getClassName = (key) => {
+	const cls = ["cell"];
 
-		return;
-	}
+	if (key.action === "enter") cls.push("accent");
+	if (key.isDisabled) cls.push("is-disabled");
 
-	if (cell.action === "delete") {
-		emit("delete");
+	return cls.join(" ");
+};
 
-		return;
-	}
+/**
+ * @param {Key} key
+ */
+const handleClick = (key) => {
+	const args = [];
 
-	if (props.isEnterDisabled) return;
+	if (key.action === "input") args.push(key.value);
 
-	emit("enter");
+	emit(key.action, ...args);
 };
 </script>
 
 <template>
 	<div class="container">
-		<div v-for="(row, i) in rows" :key="i" class="row">
+		<div v-for="row in layout" class="row">
 			<div
-				v-for="cell in row"
-				:key="cell.key"
-				:class="getClassName(cell)"
-				@click="handleClick(cell)"
+				v-for="key in row.split(' ').map(parseKey)"
+				:class="getClassName(key)"
+				@click="handleClick(key)"
 			>
-				{{ cell.key }}
+				{{ key.value }}
 			</div>
 		</div>
 	</div>
