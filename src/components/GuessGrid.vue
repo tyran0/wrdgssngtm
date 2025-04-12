@@ -1,10 +1,10 @@
 <script setup>
 import { ref, shallowRef, watchEffect, onUnmounted } from "vue";
 
-import useDeviceType from "./useDeviceType";
+import useDeviceType from "@hooks/useDeviceType";
 
-import GuessRow from "./GuessRow.vue";
-import Keyboard from "./Keyboard.vue";
+import GuessRow from "@components/GuessRow.vue";
+import Keyboard from "@components/Keyboard.vue";
 
 /**
  * @typedef Props

@@ -1,5 +1,5 @@
 <script setup>
-import GuessCell from "./GuessCell.vue";
+import GuessCell from "@components/GuessCell.vue";
 
 /**
  * @typedef LetterGuess

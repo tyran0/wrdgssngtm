@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from "vue";
 
-import GuessGrid from "./GuessGrid.vue";
+import GuessGrid from "@components/GuessGrid.vue";
 
 const isFinished = ref(false);
 const isWin = ref(false);
